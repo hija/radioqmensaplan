@@ -57,6 +57,22 @@ function radioq_mensaplan_download() {
 	}
 }
 
+function get_meal_closest_to_date($xml, $date){
+	$days = $xml->canteen->day;
+
+	foreach($days as $day){
+		$datum = strtotime($day['date']);
+		if ($datum == $date){
+			if (isset($day->closed)){
+				continue; // Don't show closed menues
+			}
+			return $day;
+		}else if($datum > $date){
+			return $day;
+		}
+	}
+}
+
 function show_mensaplan($attr){
 
 	$attr = shortcode_atts( array(
@@ -80,8 +96,9 @@ function show_mensaplan($attr){
 	}
 
 	// Read in mensafile
-	$xml=simplexml_load_file($mensa_to_file[$attr['mensa']]);
-	$meals = $xml->canteen->day[0]->category;
+	$xml = simplexml_load_file($mensa_to_file[$attr['mensa']]);
+	//$datemeals = get_meal_closest_to_date($xml, strtotime('2019-04-19'));
+	$datemeals = get_meal_closest_to_date($xml, strtotime('Y-m-d'));
 
 	$output = <<<EOT
 <table>
@@ -92,6 +109,11 @@ function show_mensaplan($attr){
 </tr>
 EOT;
 
+	if (is_null($datemeals)){
+		return 'Error: Data could not be loaded successful.';
+	}
+
+	$meals = $datemeals->category;
 	foreach($meals as $meal) {
 		$mealdata = $meal->meal;
 		$mealname = $mealdata->name[0];
@@ -119,6 +141,7 @@ EOT;
 	}
 
 	$output .= '</table>';
+	$output .= '<h6> (Für Datum: ' . $datemeals['date'] . ') </h6>';
 	return $output;
 }
 
